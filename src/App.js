@@ -38,7 +38,7 @@ const GlobalStyles = () => (
 );
 
 // --- THIS IS THE ONLY LINE YOU NEED TO EDIT TO CHANGE THE SERVER URL ---
-const API_URL = "http://localhost:5000";
+const API_URL = "https://wallet-backend-b7nh.onrender.com";
 
 function App() {
   const [name, setName] = useState("");
