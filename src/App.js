@@ -37,6 +37,9 @@ const GlobalStyles = () => (
   `}</style>
 );
 
+// --- THIS IS THE ONLY LINE YOU NEED TO EDIT TO CHANGE THE SERVER URL ---
+const API_URL = "http://localhost:5000";
+
 function App() {
   const [name, setName] = useState("");
   const [walletData, setWalletData] = useState(null);
@@ -56,7 +59,7 @@ function App() {
   // Standalone function to reliably fetch the latest balances from the blockchain.
   const fetchBalances = async (address) => {
     try {
-      const balRes = await axios.post("http://localhost:5000/api/balance", { address });
+      const balRes = await axios.post(`${API_URL}/api/balance`, { address });
       setBalances(balRes.data);
     } catch (err) {
       console.error("Could not refresh balances:", err);
@@ -67,14 +70,13 @@ function App() {
   useEffect(() => {
     const checkStatus = async (hash) => {
       try {
-        const res = await axios.post("http://localhost:5000/api/verify", { txHash: hash });
+        const res = await axios.post(`${API_URL}/api/verify`, { txHash: hash });
         
         if (res.data.status && res.data.status !== "Pending") {
           clearInterval(pollingIntervals.current[hash]);
           delete pollingIntervals.current[hash];
           
           if (walletData?.address) {
-            // THE CRITICAL FIX: Refresh both history and balances to sync with the blockchain.
             fetchHistory(walletData.address, true);
             fetchBalances(walletData.address); 
           }
@@ -101,7 +103,7 @@ function App() {
     if (!name) return alert("Please enter a name to create a wallet.");
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:5000/api/create", { name });
+      const res = await axios.post(`${API_URL}/api/create`, { name });
       setWalletData(res.data);
       alert("✅ Wallet Created");
     } catch (err) {
@@ -116,7 +118,7 @@ function App() {
       setShowQRCode(false);
       setShowHistory(false);
       setTransactionHistory([]);
-      const res = await axios.get(`http://localhost:5000/api/fetch/${name}`);
+      const res = await axios.get(`${API_URL}/api/fetch/${name}`);
       setWalletData(res.data);
       await fetchBalances(res.data.address);
     } catch (err) {
@@ -129,7 +131,7 @@ function App() {
     if (!recipient || !amount) return alert("Please fill in a valid recipient and amount.");
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:5000/api/send", { privateKey: walletData.privateKey, to: recipient, amount, token });
+      const res = await axios.post(`${API_URL}/api/send`, { privateKey: walletData.privateKey, to: recipient, amount, token });
       setTxHash(res.data.txHash);
       alert(`✅ Transaction Submitted!\nIt will show as 'Pending' until confirmed.`);
       fetchHistory(walletData.address, true);
@@ -143,7 +145,7 @@ function App() {
     if (!txHash) return alert("Please enter a transaction hash to verify.");
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:5000/api/verify", { txHash });
+      const res = await axios.post(`${API_URL}/api/verify`, { txHash });
       setVerifyData(res.data);
       if (walletData?.address) {
         fetchHistory(walletData.address, true);
@@ -157,7 +159,7 @@ function App() {
   const fetchHistory = async (address, isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/history/${address}`);
+      const res = await axios.get(`${API_URL}/api/history/${address}`);
       setTransactionHistory(res.data);
       if (!isRefresh) setShowHistory(true);
     } catch (err) {
@@ -167,7 +169,7 @@ function App() {
 
   const cancelTransaction = async (hash) => {
     try {
-      await axios.post("http://localhost:5000/api/cancel", { txHash: hash });
+      await axios.post(`${API_URL}/api/cancel`, { txHash: hash });
       alert("Transaction cancellation requested! The interface will update once the transaction is finalized on the blockchain.");
     } catch (err) {
       alert(`❌ Error canceling tx: ${err.response?.data?.error || err.message}`);
@@ -186,7 +188,6 @@ function App() {
         {loading && (
           <div style={styles.loaderOverlay}>
             <div style={styles.spinnerContainer}>
-              {/* This is the filled, colored loader you requested. */}
               <div style={styles.spinner}></div>
               <p style={styles.loadingText}>Processing...</p>
             </div>
@@ -322,6 +323,7 @@ const styles = {
   header: { textAlign: 'center', marginBottom: '40px' },
   title: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', fontSize: '2.5rem', fontWeight: '700', color: '#fff', textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)' },
   subtitle: { fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.9)', marginTop: '5px' },
+  // THIS LINE IS NOW FIXED
   card: { background: "rgba(255, 255, 255, 0.7)", padding: '25px', borderRadius: '16px', marginBottom: '25px', boxShadow: "0 8px 32px rgba(31, 38, 135, 0.2)", border: '1px solid rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: '600', marginBottom: '20px', borderBottom: '1px solid #E5E7EB', paddingBottom: '10px' },
   mainGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' },
