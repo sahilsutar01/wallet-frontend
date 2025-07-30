@@ -107,7 +107,12 @@ function App() {
       setWalletData(res.data);
       alert("✅ Wallet Created");
     } catch (err) {
-      alert(`❌ Error creating wallet: ${err.response?.data?.error || err.message}`);
+      // --- MODIFICATION: Specifically check for the 409 status from the server ---
+      if (err.response && err.response.status === 409) {
+        alert("❌ Wallet name already exists. Please choose a different name.");
+      } else {
+        alert(`❌ Error creating wallet: ${err.response?.data?.error || err.message}`);
+      }
     } finally { setLoading(false); }
   };
 
@@ -209,39 +214,41 @@ function App() {
             </div>
           </div>
 
-          <div style={styles.mainGrid}>
-            <div style={styles.column}>
-              <div style={styles.card}>
-                <h2 style={styles.sectionHeader}><FiSend /> Send Tokens</h2>
-                <input placeholder="Recipient Address" value={recipient} onChange={(e) => setRecipient(e.target.value)} style={styles.input} />
-                <div style={styles.inputGroup}>
-                  <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...styles.input, flex: '2' }} />
-                  <select value={token} onChange={(e) => setToken(e.target.value)} style={styles.input}><option value="bnb">BNB</option><option value="usdt">USDT</option><option value="usdc">USDC</option></select>
-                </div>
-                <button onClick={sendTokens} disabled={loading || !walletData} style={{ ...styles.button, width: '100%', marginTop: '10px' }}>Send Transaction</button>
-              </div>
-
-              <div style={styles.card}>
-                <h2 style={styles.sectionHeader}><FiCheckCircle /> Verify Transaction</h2>
-                <div style={styles.inputGroup}>
-                  <input placeholder="Paste Transaction Hash" value={txHash} onChange={(e) => setTxHash(e.target.value)} style={styles.input} />
-                  <button onClick={verifyTx} disabled={loading || !txHash} style={styles.button}>Verify</button>
-                </div>
-                {verifyData && (
-                  <div style={styles.verifyContainer}>
-                    <p style={styles.detailText}><strong>From:</strong> {verifyData.from?.substring(0, 12)}...</p>
-                    <p style={styles.detailText}><strong>To:</strong> {verifyData.to?.substring(0, 12)}...</p>
-                    <p style={styles.detailText}><strong>Amount:</strong> {verifyData.value} {verifyData.token?.toUpperCase()}</p>
-                    <p style={styles.detailText}><strong>Status:</strong> <span style={styles.statusBadge(verifyData.status)}>{verifyData.status}</span></p>
-                    <p style={styles.detailText}><strong>Explorer:</strong> <a href={`https://testnet.bscscan.com/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={styles.link}>View on BscScan <FiLink2 size={12} /></a></p>
+          {/* --- MODIFICATION: Main dashboard is now conditionally rendered --- */}
+          {walletData ? (
+            <div style={styles.mainGrid}>
+              {/* Left Column (Send/Verify) */}
+              <div style={styles.column}>
+                <div style={styles.card}>
+                  <h2 style={styles.sectionHeader}><FiSend /> Send Tokens</h2>
+                  <input placeholder="Recipient Address" value={recipient} onChange={(e) => setRecipient(e.target.value)} style={styles.input} />
+                  <div style={styles.inputGroup}>
+                    <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...styles.input, flex: '2' }} />
+                    <select value={token} onChange={(e) => setToken(e.target.value)} style={styles.input}><option value="bnb">BNB</option><option value="usdt">USDT</option><option value="usdc">USDC</option></select>
                   </div>
-                )}
-              </div>
-            </div>
+                  <button onClick={sendTokens} disabled={loading} style={{ ...styles.button, width: '100%', marginTop: '10px' }}>Send Transaction</button>
+                </div>
 
-            <div style={styles.column}>
-              {walletData ? (
-                <>
+                <div style={styles.card}>
+                  <h2 style={styles.sectionHeader}><FiCheckCircle /> Verify Transaction</h2>
+                  <div style={styles.inputGroup}>
+                    <input placeholder="Paste Transaction Hash" value={txHash} onChange={(e) => setTxHash(e.target.value)} style={styles.input} />
+                    <button onClick={verifyTx} disabled={loading || !txHash} style={styles.button}>Verify</button>
+                  </div>
+                  {verifyData && (
+                    <div style={styles.verifyContainer}>
+                      <p style={styles.detailText}><strong>From:</strong> {verifyData.from?.substring(0, 12)}...</p>
+                      <p style={styles.detailText}><strong>To:</strong> {verifyData.to?.substring(0, 12)}...</p>
+                      <p style={styles.detailText}><strong>Amount:</strong> {verifyData.value} {verifyData.token?.toUpperCase()}</p>
+                      <p style={styles.detailText}><strong>Status:</strong> <span style={styles.statusBadge(verifyData.status)}>{verifyData.status}</span></p>
+                      <p style={styles.detailText}><strong>Explorer:</strong> <a href={`https://testnet.bscscan.com/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={styles.link}>View on BscScan <FiLink2 size={12} /></a></p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Right Column (Wallet Info/History) */}
+              <div style={styles.column}>
                   <div style={styles.card}>
                     <h2 style={styles.sectionHeader}><FiCreditCard /> Wallet Information</h2>
                     <DetailRow icon={<FiCreditCard />} label="Address" value={walletData.address} onCopy={() => copyToClipboard(walletData.address)} />
@@ -299,10 +306,14 @@ function App() {
                       ) : (<p style={{ textAlign: "center", padding: "20px 0" }}>No transaction history found.</p>)}
                     </div>
                   )}
-                </>
-              ) : (<div style={{ ...styles.card, textAlign: 'center' }}><h2 style={styles.sectionHeader}>No Wallet Loaded</h2><p>Please create a new wallet or fetch an existing one to begin.</p></div>)}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ ...styles.card, textAlign: 'center', marginTop: '40px', maxWidth: '600px', margin: '40px auto' }}>
+                <h2 style={styles.sectionHeader}>No Wallet Loaded</h2>
+                <p>Please create a new wallet or fetch an existing one to begin.</p>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -323,10 +334,9 @@ const styles = {
   header: { textAlign: 'center', marginBottom: '40px' },
   title: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', fontSize: '2.5rem', fontWeight: '700', color: '#fff', textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)' },
   subtitle: { fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.9)', marginTop: '5px' },
-  // THIS LINE IS NOW FIXED
   card: { background: "rgba(255, 255, 255, 0.7)", padding: '25px', borderRadius: '16px', marginBottom: '25px', boxShadow: "0 8px 32px rgba(31, 38, 135, 0.2)", border: '1px solid rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: '600', marginBottom: '20px', borderBottom: '1px solid #E5E7EB', paddingBottom: '10px' },
-  mainGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' },
+  mainGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginTop: '25px' },
   column: { display: 'flex', flexDirection: 'column', gap: '25px' },
   inputGroup: { display: 'flex', gap: '10px', alignItems: 'center' },
   input: { flex: 1, padding: '12px 15px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', backgroundColor: '#F9FAFB' },
